@@ -6,7 +6,9 @@ import {useSelector} from 'react-redux';
 import {RootState} from '../../redux/store';
 
 export default function TransactionsScreen() {
-  const {transactions} = useSelector((state: RootState) => state.transactions);
+  const {transactions} = useSelector(
+    (state: RootState) => state.transactionReducer,
+  );
   const reversedTransactions = [...transactions].reverse();
 
   return (

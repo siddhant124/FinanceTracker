@@ -1,5 +1,6 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-native/no-inline-styles */
+/* eslint-disable react-hooks/exhaustive-deps */
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -8,132 +9,111 @@ import {
   FlatList,
   StyleSheet,
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useDispatch, useSelector} from 'react-redux';
-import {addCategory} from '../../redux/transactionsSlice';
+import {addTransactionCategory} from '../../redux/action';
 import {RootState} from '../../redux/store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function CategoryScreen() {
   const [categoryName, setCategoryName] = useState('');
-  const categories = useSelector(
-    (state: RootState) => state.transactions.categories,
-  );
+  const categories = useSelector((state: RootState) => state.reducer); // Access categories from Redux state
   const dispatch = useDispatch();
 
-  const handleAddCategory = () => {
-    if (categoryName !== '') {
-      dispatch(addCategory(categoryName));
+  // Handle adding category and saving to AsyncStorage
+  const handleAddTransCategory = async () => {
+    if (categoryName.trim()) {
+      dispatch(addTransactionCategory(categoryName.trim()));
+      await saveCategoryToStorage(categoryName.trim());
       setCategoryName('');
     } else {
       console.warn('Please add category');
     }
   };
 
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const storedCategories = await AsyncStorage.getItem('categories');
+  // Save newly added categories to AsyncStorage
+  const saveCategoryToStorage = async (newCategory: string) => {
+    try {
+      const storedCategories = await AsyncStorage.getItem('categories');
+      const parsedCategories = storedCategories
+        ? JSON.parse(storedCategories)
+        : [];
+      parsedCategories.push(newCategory);
+      await AsyncStorage.setItem(
+        'categories',
+        JSON.stringify(parsedCategories),
+      );
+    } catch (error) {
+      console.log('Error saving categories:', error);
+    }
+  };
 
-        if (storedCategories !== null) {
-          const parsedCategories = JSON.parse(storedCategories);
-
-          parsedCategories.forEach((category: string) => {
-            dispatch(addCategory(category));
-          });
-        }
-      } catch (error) {
-        console.log('Error loading categories:', error);
+  // Load categories from AsyncStorage on component mount
+  const loadCategories = async () => {
+    try {
+      const storedCategories = await AsyncStorage.getItem('categories');
+      if (storedCategories) {
+        const parsedCategories = JSON.parse(storedCategories);
+        const newCategories = parsedCategories.filter(
+          (category: string) => !categories.includes(category),
+        ); // Only add categories not already in state
+        newCategories.forEach((category: string) => {
+          dispatch(addTransactionCategory(category));
+        });
       }
-    };
+    } catch (error) {
+      console.log('Error loading categories:', error);
+    }
+  };
 
+  useEffect(() => {
     loadCategories();
   }, []);
 
+  // Memoize the renderItem to avoid unnecessary re-renders
+  const renderItem = useCallback(
+    ({item}: {item: string}) => (
+      <View style={styles.categoryItem}>
+        <Text style={styles.categoryText}>{item}</Text>
+      </View>
+    ),
+    [],
+  );
+
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: 'white',
-      }}>
-      <View
-        style={{
-          padding: 24,
-          flex: 1,
-        }}>
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: 'bold',
-            color: 'black',
-          }}>
-          Add Categories
-        </Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Add Categories</Text>
+
         <TextInput
           placeholder="Category name"
-          onChangeText={text => {
-            setCategoryName(text);
-          }}
+          onChangeText={setCategoryName}
           value={categoryName}
-          inputMode="text"
-          keyboardType="default"
-          style={{
-            marginTop: 10,
-            borderWidth: 1,
-            borderColor: '#999',
-            borderRadius: 9,
-            paddingHorizontal: 10,
-            paddingVertical: 8,
-          }}
+          style={styles.input}
         />
 
         <TouchableOpacity
-          activeOpacity={categoryName !== '' ? 0.6 : 1}
-          onPress={() => {
-            if (categoryName !== '') {
-              handleAddCategory();
-            } else {
-              console.warn('Please add category');
-            }
-          }}
-          style={{
-            backgroundColor: categoryName !== '' ? '#000' : '#808080',
-            borderRadius: 10,
-            marginTop: 10,
-            alignSelf: 'center',
-            paddingHorizontal: 10,
-          }}>
-          <Text
-            style={{
-              color: '#FFF',
-              textAlign: 'center',
-              padding: 10,
-            }}>
-            Add
-          </Text>
+          activeOpacity={categoryName.trim() ? 0.6 : 1}
+          onPress={handleAddTransCategory}
+          style={[
+            styles.addButton,
+            {backgroundColor: categoryName.trim() ? '#000' : '#808080'},
+          ]}>
+          <Text style={styles.addButtonText}>Add</Text>
         </TouchableOpacity>
 
-        <Text
-          style={{
-            fontSize: 14,
-            marginTop: 24,
-            color: 'black',
-            fontWeight: 'semibold',
-            marginBottom: 14,
-          }}>
-          Category List
-        </Text>
+        <Text style={styles.listTitle}>Category List</Text>
         <FlatList
+          contentContainerStyle={{
+            flexDirection: 'row',
+            gap: 10,
+            flexWrap: 'wrap',
+          }}
           data={categories}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           bounces={false}
-          keyExtractor={(item, index) => index.toString()} // Unique key for each item
-          renderItem={({item}) => (
-            <View style={styles.categoryItem}>
-              <Text style={styles.categoryText}>{item}</Text>
-            </View>
-          )}
           ListEmptyComponent={
             <Text style={styles.emptyText}>No categories available</Text>
           }
@@ -144,23 +124,64 @@ export default function CategoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  categoryItem: {
-    backgroundColor: '#f0f0f0', // Light grey background
-    padding: 15,
-    marginVertical: 8,
-    borderRadius: 10,
+  safeArea: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  container: {
+    padding: 24,
+    flex: 1,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'black',
+  },
+  input: {
+    marginTop: 10,
     borderWidth: 1,
-    borderColor: '#ddd', // Border around each item
+    borderColor: '#999',
+    borderRadius: 9,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  addButton: {
+    borderRadius: 10,
+    marginTop: 10,
+    alignSelf: 'center',
+    paddingHorizontal: 10,
+  },
+  addButtonText: {
+    color: '#FFF',
+    textAlign: 'center',
+    padding: 10,
+  },
+  listTitle: {
+    fontSize: 14,
+    marginTop: 24,
+    color: 'black',
+    fontWeight: 'semibold',
+    marginBottom: 14,
+  },
+  categoryItem: {
+    backgroundColor: '#D3E3F8',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    padding: 12,
+    borderRadius: 10000,
+    borderWidth: 1,
+    borderColor: '#003380',
   },
   categoryText: {
-    fontSize: 18,
-    color: '#333', // Dark grey text
-    fontWeight: 'bold',
+    color: '#003380',
+    fontSize: 12,
+    lineHeight: 16,
   },
   emptyText: {
     textAlign: 'center',
     fontSize: 16,
-    color: '#999', // Light grey text for empty message
+    color: '#999',
     marginTop: 20,
   },
 });

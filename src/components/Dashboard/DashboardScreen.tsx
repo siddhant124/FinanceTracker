@@ -5,38 +5,38 @@ import React, {useEffect} from 'react';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Transactionlist from './Transactionlist';
 import {PlusCircleIcon} from 'react-native-heroicons/outline';
+import {ScrollView} from 'react-native-gesture-handler';
 import {useDispatch, useSelector} from 'react-redux';
 import {RootState} from '../../redux/store';
-import {addTransaction, Transaction} from '../../redux/transactionsSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {ScrollView} from 'react-native-gesture-handler';
+import {addTransactions} from '../../redux/action';
+import {Transactions} from '../../redux/transactionReducer';
 
 export default function Dashboard({navigation}: {navigation: any}) {
   const {income, expense, balance, transactions} = useSelector(
-    (state: RootState) => state.transactions,
+    (state: RootState) => state.transactionReducer,
   );
   const reversedTransactions = [...transactions].reverse();
 
   const dispatch = useDispatch();
 
-  useEffect(() => {
-    const loadTransactions = async () => {
-      try {
-        const storedTransactions = await AsyncStorage.getItem('transactions');
-
-        if (storedTransactions !== null) {
-          const parsedTransactions = JSON.parse(storedTransactions);
-
-          parsedTransactions.forEach((transaction: Transaction) => {
-            dispatch(addTransaction(transaction));
-          });
-        }
-      } catch (error) {
-        console.log('Error loading transactions:', error);
+  // Load categories from AsyncStorage on component mount
+  const loadCategories = async () => {
+    try {
+      const storedTransactions = await AsyncStorage.getItem('transactions');
+      if (storedTransactions) {
+        const parsedTransactions = JSON.parse(storedTransactions);
+        parsedTransactions.forEach((transaction: Transactions) => {
+          dispatch(addTransactions(transaction));
+        });
       }
-    };
+    } catch (error) {
+      console.log('Error loading categories:', error);
+    }
+  };
 
-    loadTransactions();
+  useEffect(() => {
+    loadCategories();
   }, []);
 
   return (
