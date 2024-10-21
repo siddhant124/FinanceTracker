@@ -15,6 +15,7 @@ export default function Dashboard({navigation}: {navigation: any}) {
   const {income, expense, balance, transactions} = useSelector(
     (state: RootState) => state.transactions,
   );
+  const reversedTransactions = [...transactions].reverse();
 
   const dispatch = useDispatch();
 
@@ -148,7 +149,7 @@ export default function Dashboard({navigation}: {navigation: any}) {
 
         <Transactionlist
           isScrollEnabled={false}
-          data={transactions?.slice(0, 5)?.reverse() ?? []}
+          data={reversedTransactions?.slice(0, 5) ?? []}
         />
 
         <TouchableOpacity

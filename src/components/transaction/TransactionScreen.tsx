@@ -7,6 +7,8 @@ import {RootState} from '../../redux/store';
 
 export default function TransactionsScreen() {
   const {transactions} = useSelector((state: RootState) => state.transactions);
+  const reversedTransactions = [...transactions].reverse();
+
   return (
     <SafeAreaView
       style={{
@@ -26,7 +28,7 @@ export default function TransactionsScreen() {
           }}>
           All Transactions
         </Text>
-        <Transactionlist data={transactions} />
+        <Transactionlist data={reversedTransactions} />
       </View>
     </SafeAreaView>
   );
